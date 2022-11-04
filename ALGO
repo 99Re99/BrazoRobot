@@ -1,0 +1,101 @@
+import cv2
+import cv2
+import numpy as np
+from dataclasses import dataclass
+
+@dataclass
+class Circulo:
+    x: int
+    y: int
+    r: int
+    contorno: object
+    area: int
+    perimetro: int
+    esquina: int
+
+@dataclass
+class Figura:
+    tipo: str
+    circulo: Circulo = Circulo(0, 0, 0, None, 0, 0, 0)
+    cuadrado: Circulo = Circulo(0, 0, 0, None, 0, 0, 0)
+    rectangulo: Circulo = Circulo(0, 0, 0, None, 0, 0, 0)
+    triangulo: Circulo = Circulo(0, 0, 0, None, 0, 0, 0)
+
+def obContorno(img, frame):
+    figura = Figura("")
+    contorno, jerarquia = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for cnt in contorno:
+        area = cv2.contourArea(cnt)
+        perimetro = cv2.arcLength(cnt, True)
+        aprrox = cv2.approxPolyDP(cnt, 0.02 * perimetro, True)
+        objEsquina = len(aprrox)
+        x, y, w, h = cv2.boundingRect(aprrox)
+        if objEsquina == 3:
+            objectType = "Triangulo"
+            figura.triangulo.x = x + (w // 2)
+            figura.triangulo.y = y + (h // 2)
+            figura.triangulo.r = int(w/2)
+            figura.triangulo.contorno = aprrox
+            figura.triangulo.area = area
+            figura.triangulo.perimetro = perimetro
+            figura.triangulo.esquina = objEsquina
+            cv2.drawContours(frame, [figura.triangulo.contorno], -1, (0, 0, 255), 3)
+            cv2.putText(frame, objectType, (figura.triangulo.x - 10, figura.triangulo.y + 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 0, 0), 2)
+        elif objEsquina == 4:
+            aspecto = w / float(h)
+            if aspecto > 0.95 and aspecto < 1.05:
+                objectType = "cuadrado"
+                figura.cuadrado.x = x + (w // 2)
+                figura.cuadrado.y = y + (h // 2)
+                figura.cuadrado.r = int(w / 2)
+                figura.cuadrado.contorno = aprrox
+                figura.cuadrado.area = area
+                figura.cuadrado.perimetro = perimetro
+                figura.cuadrado.esquina = objEsquina
+                cv2.drawContours(frame, [figura.cuadrado.contorno], -1, (0, 0, 255), 3)
+                cv2.putText(frame, objectType, (figura.cuadrado.x - 10, figura.cuadrado.y + 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 0, 0), 2)
+            else:
+                objectType = "Rectangulo"
+                figura.rectangulo.x = x + (w // 2)
+                figura.rectangulo.y = y + (h // 2)
+                figura.rectangulo.r = int(w / 2)
+                figura.rectangulo.contorno = aprrox
+                figura.rectangulo.area = area
+                figura.rectangulo.perimetro = perimetro
+                figura.rectangulo.esquina = objEsquina
+                cv2.drawContours(frame, [figura.rectangulo.contorno], -1, (0, 0, 255), 3)
+                cv2.putText(frame, objectType, (figura.rectangulo.x - 10, figura.rectangulo.y + 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 0, 0), 2)
+        elif objEsquina > 4:
+            objectType = "Circulo"
+            figura.circulo.x = x + (w // 2)
+            figura.circulo.y = y + (h // 2)
+            figura.circulo.r = int(w / 2)
+            figura.circulo.contorno = aprrox
+            figura.circulo.area = area
+            figura.circulo.perimetro = perimetro
+            figura.circulo.esquina = objEsquina
+            cv2.drawContours(frame, [figura.circulo.contorno], -1, (0, 0, 255), 3)
+            cv2.putText(frame, objectType, (figura.circulo.x - 10, figura.circulo.y + 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 0, 0), 2)
+        else:
+            objectType = "Nada"
+            cv2.putText(frame, objectType, (x - 10, y + 10), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 0, 0), 2)
+    return figura
+
+opcion = input("Escribe la opcion A o B")
+if opcion == "A":
+    cap = cv2.VideoCapture("videoFigs.mp4")
+else:
+    cap = cv2.VideoCapture(0)
+while True:
+    ret, frame = cap.read()
+    # imgContour=frame.copy()
+    imgGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    imgBlur = cv2.GaussianBlur(imgGray, (7, 7), 1)
+    imgCanny = cv2.Canny(imgBlur, 50, 50)
+    figura = obContorno(imgCanny, frame)
+    cv2.imshow("Figuras geometricas", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cv2.destroyAllWindows()
